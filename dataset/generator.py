@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from glob import glob
 import numpy as np
 import cv2
@@ -10,13 +11,14 @@ base_config = {
     'textures_directory': 'tmp/textures',
     'paper_sigma_span': [14, 22],
     'background_distribution': {
-        'paper': 50,
-        'texture': 50
+        'paper': 30,
+        'texture': 70,
+        'cyclic': 10
     }
 }
 
 
-def from_distribution(distribution):
+def choice_from_distribution(distribution):
     # Results space
     possibilities = list(distribution.keys())
 
@@ -29,12 +31,29 @@ def from_distribution(distribution):
     return result
 
 
+def preview_backgrounds(config):
+    backgrounds = []
+    for it in range(4):
+        layer = []
+        for jt in range(4):
+            background = make_border(make_background(config))
+            layer.append(background)
+        layer = np.vstack(layer)
+        backgrounds.append(layer)
+    backgrounds = np.hstack(backgrounds)
+
+    plt.imshow(backgrounds)
+    plt.show()
+
+
 def make_background(config):
-    background_type = from_distribution(config['background_distribution'])
+    background_type = choice_from_distribution(config['background_distribution'])
     if background_type == 'paper':
         img = make_paper_background(config)
     if background_type == 'texture':
         img = make_texture_background(config)
+    if background_type == 'cyclic':
+        img = make_cyclic_background(config)
 
     return img
 
@@ -122,3 +141,28 @@ def paper_noise(width, height, ratio=1, sigma=15):
     if ratio > 1:
         result = cv2.resize(result, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
     return result.reshape((width, height))
+
+
+def make_cyclic_background(config):
+    PI = 4
+    x = np.linspace(-PI, PI, 1001)
+    y = np.linspace(-PI, PI, 1001)
+    X, Y = np.meshgrid(x, y)
+
+    howmany = np.random.randint(3, 12)
+    frequencies = 38 + 29 * np.random.random(howmany)
+    out = np.zeros_like(X)
+    for f in frequencies:
+        if np.random.random() > 0.5:
+            out += np.cos(f * X)**2
+        if np.random.random() > 0.5:
+            out += np.sin(f * Y)**2
+
+    out -= out.min()
+    out /= out.max()
+    out = 150 + 105 * out
+    out = cv2.cvtColor(out.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+    out = random_crop(out, config['width'], config['height'])
+
+    return out
