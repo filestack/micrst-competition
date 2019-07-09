@@ -1,3 +1,4 @@
+from PIL import ImageFont, ImageDraw, Image
 from matplotlib import pyplot as plt
 from glob import glob
 import numpy as np
@@ -8,21 +9,49 @@ import os
 base_config = {
     'width': 28,
     'height': 28,
+    'chars': [
+        '1', '2', '3', '4',
+        '5', '6', '7', '8',
+        '9', '0', 'A', 'B',
+        'C', 'D'
+    ],
     'textures_directory': 'tmp/textures',
     'paper_sigma_span': [14, 22],
     'background_distribution': {
         'paper': 30,
         'texture': 70,
         'cyclic': 10
-    }
+    },
+    'font_size_span': [15, 30]
 }
+
+
+def draw_character(config):
+    img = make_background(config)
+
+    font_path = "./micr-encoding.regular.ttf"
+    font_size = np.random.randint(*config['font_size_span'])
+    font = ImageFont.truetype(font_path, font_size)
+
+    img_pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(img_pil)
+
+    x0 = np.random.randint(10) + 2
+    y0 = np.random.randint(10) + 2
+    color_black = (0, 0, 0)
+    text = np.random.choice(config['chars'])
+    draw.text((x0, y0),  text, font=font, fill=color_black)
+
+    digit = np.array(img_pil, dtype=np.uint8)
+
+    return digit
 
 
 def choice_from_distribution(distribution):
     # Results space
     possibilities = list(distribution.keys())
 
-    # Get normalized probabilities (np requirement)
+    # Get normalized probabilities
     probabilities = list(distribution.values())
     probabilities = [p/sum(probabilities) for p in probabilities]
 
