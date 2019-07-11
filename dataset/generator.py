@@ -1,6 +1,8 @@
 from PIL import ImageFont, ImageDraw, Image
 from matplotlib import pyplot as plt
 from glob import glob
+from tqdm import tqdm
+import pandas as pd
 import numpy as np
 import skimage
 import cv2
@@ -8,6 +10,7 @@ import os
 
 
 base_config = {
+    'root_directory': './tmp/dupa01',
     'width': 28,
     'height': 28,
     'chars': [
@@ -23,11 +26,55 @@ base_config = {
         'texture': 70,
         'cyclic': 10
     },
-    'font_size_span': [15, 30],
+    'font_size_span': [15, 32],
     'blur_probability': 0.42,
     'noise_probability': 0.42,
     'random_affine_probability': 0.333
 }
+
+
+def make_dataset(config, number_of_samples=10000):
+    # Prepare the directories to store images and labels
+    root_dir = config['root_directory']
+    images_dir = prepare_directory(root_dir)
+
+    # Prepare output container
+    records = []
+
+    for it in tqdm(range(number_of_samples)):
+        # Synthetic generation
+        img, ground_truth = make_micrst_sample(config)
+
+        # Make the numbering easily sortable
+        number = 1_000_000 + it
+        savepath = os.path.join(images_dir, f'MICRST_{number}.png')
+
+        cv2.imwrite(savepath, img)
+        record = {'path': savepath, 'label': ground_truth}
+        records.append(record)
+
+    df = pd.DataFrame(records)
+    labels_path = os.path.join(root_dir, 'labels.csv')
+    df.to_csv(labels_path, index=False)
+
+    return df
+
+
+def prepare_directory(root_dir):
+    images_dir = os.path.join(root_dir, 'image')
+    if not os.path.exists(root_dir):
+        os.makedirs(root_dir)
+        os.makedirs(images_dir)
+    else:
+        if not os.path.exists(images_dir):
+            os.makedirs(images_dir)
+        else:
+            query = os.path.join(images_dir, '*')
+            old_files = glob(query)
+            for f in old_files:
+                os.remove(f)
+
+    return images_dir
 
 
 def make_micrst_sample(config):
