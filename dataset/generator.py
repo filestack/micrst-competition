@@ -2,6 +2,7 @@ from PIL import ImageFont, ImageDraw, Image
 from matplotlib import pyplot as plt
 from glob import glob
 import numpy as np
+import skimage
 import cv2
 import os
 
@@ -22,29 +23,128 @@ base_config = {
         'texture': 70,
         'cyclic': 10
     },
-    'font_size_span': [15, 30]
+    'font_size_span': [15, 30],
+    'blur_probability': 0.42,
+    'noise_probability': 0.42,
+    'random_affine_probability': 0.333
 }
 
 
-def draw_character(config):
+def make_micrst_sample(config):
     img = make_background(config)
+    img, ground_truth = draw_character(img, config)
 
+    img = introduce_obfuscations(img, config)
+
+    return img, ground_truth
+
+
+def introduce_obfuscations(img, config):
+    img = add_noise(img, config)
+
+    # If anything, I think it's better to blur after nois
+    img = random_blur(img, config)
+
+    img = random_affine(img, config)
+
+    return img
+
+
+def random_affine(img, config):
+    probability = config['random_affine_probability']
+    if np.random.random() > probability:
+        return img
+
+    rows, cols, _ = img.shape
+
+    # Original corners coordinates
+    starting_points = [
+        [0, 0],
+        [0, rows],
+        [cols, 0]
+    ]
+
+    # Coordinates shifted randomly left/right and up/down
+    transformed_points = []
+    for p in starting_points:
+        # The -4::4 span is arbitrary and could be configured
+        new_point = [p[0] + np.random.randint(-4, 5), p[1] + np.random.randint(-4, 5)]
+        transformed_points.append(new_point)
+
+    pts1 = np.float32(starting_points)
+    pts2 = np.float32(transformed_points)
+
+    # Transformation matrix
+    M = cv2.getAffineTransform(pts1, pts2)
+    img = cv2.warpAffine(img, M, (cols, rows), borderValue=(255, 255, 255))
+
+    return img
+
+
+def random_blur(img, config):
+    probability = config['blur_probability']
+    if np.random.random() > probability:
+        # No blur
+        return img
+
+    # Kernel size could be configurable as well,
+    # but for 28x28 going over 3 is practically destroying
+    # the information we'd like to extract
+    kernel_size = np.random.randint(1, 3)
+    img = cv2.blur(img, (kernel_size, kernel_size))
+
+    return img
+
+
+def add_noise(img, config):
+    probability = config['noise_probability']
+    if np.random.random() < probability:
+        return img
+
+    # More randomness
+    noise_modes = [
+        "gaussian", "localvar", "poisson",
+        "salt", "pepper", "s&p", "speckle"
+    ]
+    noise_mode = np.random.choice(noise_modes)
+
+    # Go back and forth from np/cv2 to skimage formats ...
+    img = img / 255.
+    img = 255 * skimage.util.random_noise(img, mode=noise_mode)
+
+    img = img.astype(np.uint8)
+
+    return img
+
+
+def draw_character(img, config):
+    # Prepare path
     font_path = "./micr-encoding.regular.ttf"
     font_size = np.random.randint(*config['font_size_span'])
     font = ImageFont.truetype(font_path, font_size)
 
+    # Prepare image
     img_pil = Image.fromarray(img)
     draw = ImageDraw.Draw(img_pil)
 
+    # Random shift
     x0 = np.random.randint(10) + 2
     y0 = np.random.randint(10) + 2
+
+    # MICR is printed in black only, we could add
+    # a little random gray variations, feel free to experiment
     color_black = (0, 0, 0)
-    text = np.random.choice(config['chars'])
-    draw.text((x0, y0),  text, font=font, fill=color_black)
 
-    digit = np.array(img_pil, dtype=np.uint8)
+    # Choose one of the symbols
+    character = np.random.choice(config['chars'])
+    draw.text((x0, y0), character, font=font, fill=color_black)
 
-    return digit
+    # Convert back to OpenCV/NumPy format
+    img = np.array(img_pil, dtype=np.uint8)
+
+    # We have to keep the information about
+    # the image content to teach our algorithms
+    return img, character
 
 
 def choice_from_distribution(distribution):
