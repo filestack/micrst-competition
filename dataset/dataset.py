@@ -23,6 +23,9 @@ class MICRSTDataset(Dataset):
 
         img_path = self.df.iloc[idx, 1]
         img = cv2.imread(img_path)
+
+        img = img.transpose(2, 0, 1)
+
         sample = {
             'img': img,
             'label': label
@@ -44,7 +47,7 @@ class Normalization(object):
         # that by using a global value of mean and std
         img = img - img.mean()
         img = img / img.std()
-        sample["img"] = img
+        sample["img"] = torch.from_numpy(img)
 
         return sample
 
