@@ -1,7 +1,7 @@
 import os
 import cv2
-import pandas as pd
 import torch
+import pandas as pd
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose
 from sklearn.model_selection import train_test_split
@@ -18,8 +18,12 @@ class MICRSTDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
+    def char_to_idx(self, char):
+        idx = self.config['chars'].index(char)
+        return idx
+
     def __getitem__(self, idx):
-        label = self.df.iloc[idx, 0]
+        label = self.char_to_idx(self.df.iloc[idx, 0])
 
         img_path = self.df.iloc[idx, 1]
         img = cv2.imread(img_path)
@@ -27,7 +31,7 @@ class MICRSTDataset(Dataset):
         img = img.transpose(2, 0, 1)
 
         sample = {
-            'img': img,
+            'image': img,
             'label': label
         }
 
@@ -39,20 +43,22 @@ class MICRSTDataset(Dataset):
 class Normalization(object):
     def __call__(self, sample, stats=None):
         # Make it so the dataset has mean = 0, std = 1
-        img = sample['img']
+        img = sample['image']
 
         # This may not be the best way to normalize
         # this type of data - black will change into
         # a various shades of gray - you could prevent
         # that by using a global value of mean and std
-        img = img - img.mean()
-        img = img / img.std()
-        sample["img"] = torch.from_numpy(img)
+        img = img - 215
+        img = img / 28.93
+
+        # By default torch works with 32 bit floats, while numpy 64
+        sample['image'] = torch.from_numpy(img).float()
 
         return sample
 
 
-def make_dataset_loaders(config, batch_size=17, test_size=0.1):
+def make_dataset_loaders(config, batch_size=256, test_size=0.1):
     data_root_dir = config['root_directory']
 
     labels_path = os.path.join(data_root_dir, 'labels.csv')

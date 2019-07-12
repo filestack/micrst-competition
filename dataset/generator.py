@@ -10,7 +10,7 @@ import os
 
 
 base_config = {
-    'root_directory': './tmp/dupa01',
+    'root_directory': './tmp/MICRST',
     'width': 28,
     'height': 28,
     'chars': [
@@ -22,14 +22,14 @@ base_config = {
     'textures_directory': 'tmp/textures',
     'paper_sigma_span': [14, 22],
     'background_distribution': {
-        'paper': 30,
-        'texture': 70,
+        'paper': 70,
+        'texture': 20,
         'cyclic': 10
     },
     'font_size_span': [15, 32],
-    'blur_probability': 0.42,
-    'noise_probability': 0.42,
-    'random_affine_probability': 0.333
+    'blur_probability': 0.22,
+    'noise_probability': 0.32,
+    'random_affine_probability': 0.233
 }
 
 
@@ -57,7 +57,24 @@ def make_dataset(config, number_of_samples=10000):
     labels_path = os.path.join(root_dir, 'labels.csv')
     df.to_csv(labels_path, index=False)
 
-    return df
+
+def make_preview(config):
+    columns = []
+    for it in range(10):
+        column = []
+        for jt in range(6):
+            # Don't care about the printed symbol
+            micrst_sample, _ = make_micrst_sample(config)
+
+            # Add border for esthetic reasons
+            micrst_sample = make_border(micrst_sample)
+
+            column.append(micrst_sample)
+        column = np.vstack(column)
+        columns.append(column)
+
+    display_grid = np.hstack(columns)
+    return display_grid
 
 
 def prepare_directory(root_dir):
