@@ -23,19 +23,24 @@ base_config = {
     'paper_sigma_span': [14, 22],
     'background_distribution': {
         'paper': 70,
-        'texture': 20,
+        'texture': 0,
         'cyclic': 10
     },
-    'font_size_span': [15, 32],
+    'font_size_span': [25, 32],
     'blur_probability': 0.22,
     'noise_probability': 0.32,
     'random_affine_probability': 0.233
 }
 
 
-def make_dataset(config, number_of_samples=10000):
+def make_dataset(config, number_of_samples=10000, force=False):
     # Prepare the directories to store images and labels
     root_dir = config['root_directory']
+
+    if os.path.exists(root_dir) and not force:
+        print('Dataset exists, add `force=True` to rebuild!')
+        return
+
     images_dir = prepare_directory(root_dir)
 
     # Prepare output container
