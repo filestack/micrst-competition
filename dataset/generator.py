@@ -23,7 +23,7 @@ base_config = {
     'paper_sigma_span': [14, 22],
     'background_distribution': {
         'paper': 70,
-        'texture': 0,
+        'texture': 15,
         'cyclic': 10
     },
     'font_size_span': [25, 32],
