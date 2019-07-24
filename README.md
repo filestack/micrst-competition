@@ -2,7 +2,7 @@
 <h1 align="center">MICRST Competition</h1>
 
 This is the repository accompanying the article:
-[From MNIST classification to Intelligent Check Processing](http://blog.filestack.com)
+[From MNIST classification to Intelligent Check Processing](https://blog.filestack.com/api/from-mnist-classification-to-intelligent-check-processing/)
 
 ## Quickstart
 
